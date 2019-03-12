@@ -3,10 +3,23 @@
  */
 
 /* Constantes pour les broches */
-const byte C1_TRIGGER_PIN = 4; // Broche TRIGGER
-const byte C1_ECHO_PIN = 5;    // Broche ECHO
-const byte C2_TRIGGER_PIN = 2; // Broche TRIGGER
-const byte C2_ECHO_PIN = 3;    // Broche ECHO
+const byte C1_TRIGGER_PIN = 2; // Broche TRIGGER
+const byte C1_ECHO_PIN = 3;    // Broche ECHO
+
+const byte C2_TRIGGER_PIN = 4; // Broche TRIGGER
+const byte C2_ECHO_PIN = 5;    // Broche ECHO
+
+const byte C3_TRIGGER_PIN = 6; // Broche TRIGGER
+const byte C3_ECHO_PIN = 7;    // Broche ECHO
+
+const byte C4_TRIGGER_PIN = 8; // Broche TRIGGER
+const byte C4_ECHO_PIN = 9;    // Broche ECHO
+
+const byte C5_TRIGGER_PIN = 10; // Broche TRIGGER
+const byte C5_ECHO_PIN = 11;    // Broche ECHO
+
+const byte C6_TRIGGER_PIN = 12; // Broche TRIGGER
+const byte C6_ECHO_PIN = 13;    // Broche ECHO
  
 /* Constantes pour le timeout */
 const unsigned long MEASURE_TIMEOUT = 25000UL; // 25ms = ~8m à 340m/s
@@ -17,15 +30,25 @@ const float SOUND_SPEED = 340.0 / 1000;
 /* Flags personne_presente */
 bool C1_personne_presente = false;
 bool C2_personne_presente = false;
+bool C3_personne_presente = false;
+bool C4_personne_presente = false;
+bool C5_personne_presente = false;
+bool C6_personne_presente = false;
 
 /* Flags couple de capteurs activés */
 bool C1_C2_actives = false;
+bool C3_C4_actives = false;
+bool C5_C6_actives = false;
 
-/** Fonction setup() */
+/* Variables globales */ 
+float distance_mm = 0;
+
+/** --- Fonction setup() --- */
 void setup() {
    
   /* Initialise le port série */
-  Serial.begin(115200);
+  Serial.begin(9600);
+  Serial.println("Initialisation...");
    
   /* Initialise les broches */
   pinMode(C1_TRIGGER_PIN, OUTPUT);
@@ -35,68 +58,125 @@ void setup() {
   pinMode(C2_TRIGGER_PIN, OUTPUT);
   digitalWrite(C2_TRIGGER_PIN, LOW); // La broche TRIGGER doit être à LOW au repos
   pinMode(C2_ECHO_PIN, INPUT);
+
+  pinMode(C3_TRIGGER_PIN, OUTPUT);
+  digitalWrite(C3_TRIGGER_PIN, LOW); // La broche TRIGGER doit être à LOW au repos
+  pinMode(C3_ECHO_PIN, INPUT);
+
+  pinMode(C4_TRIGGER_PIN, OUTPUT);
+  digitalWrite(C4_TRIGGER_PIN, LOW); // La broche TRIGGER doit être à LOW au repos
+  pinMode(C4_ECHO_PIN, INPUT);
+
+  pinMode(C5_TRIGGER_PIN, OUTPUT);
+  digitalWrite(C5_TRIGGER_PIN, LOW); // La broche TRIGGER doit être à LOW au repos
+  pinMode(C5_ECHO_PIN, INPUT);
+
+  pinMode(C6_TRIGGER_PIN, OUTPUT);
+  digitalWrite(C6_TRIGGER_PIN, LOW); // La broche TRIGGER doit être à LOW au repos
+  pinMode(C6_ECHO_PIN, INPUT);
 }
  
-/** Fonction loop() */
+/** --- Fonction loop() --- */
 void loop() {
 
+  Serial.println("Mesure distance...");
+   
+  /* --- Couple C1 et C2 --- */
   if (C1_C2_actives == false) {
     /* Capteur 1 */
-    /* 1. Lance une mesure de distance en envoyant une impulsion HIGH de 10µs sur la broche TRIGGER */
-    digitalWrite(C1_TRIGGER_PIN, HIGH);
-    delayMicroseconds(10);
-    digitalWrite(C1_TRIGGER_PIN, LOW);
-    
-    /* 2. Mesure le temps entre l'envoi de l'impulsion ultrasonique et son écho (si il existe) */
-    long measure = pulseIn(C1_ECHO_PIN, HIGH, MEASURE_TIMEOUT);
-     
-    /* 3. Calcul la distance à partir du temps mesuré */
-    float distance_mm = measure / 2.0 * SOUND_SPEED;
-  
-    /* 4. Activer flag personne_presente si distance < 1000 mm */
-    if (distance_mm <= 1000) {
-      Serial.println(distance_mm / 10.0, 2);
-      C1_personne_presente = true;
-    } else {
-      C1_personne_presente = false;
-    }
+    distance_mm = mesure_distance(C1_TRIGGER_PIN,C1_ECHO_PIN);
+    C1_personne_presente = is_personne_presente(distance_mm);
+    afficher_distance("C1", distance_mm);
   
     /* Capteur 2 */
-    /* 1. Lance une mesure de distance en envoyant une impulsion HIGH de 10µs sur la broche TRIGGER */
-    digitalWrite(C2_TRIGGER_PIN, HIGH);
-    delayMicroseconds(10);
-    digitalWrite(C2_TRIGGER_PIN, LOW);
-    
-    /* 2. Mesure le temps entre l'envoi de l'impulsion ultrasonique et son écho (si il existe) */
-    measure = pulseIn(C2_ECHO_PIN, HIGH, MEASURE_TIMEOUT);
-     
-    /* 3. Calcul la distance à partir du temps mesuré */
-    distance_mm = measure / 2.0 * SOUND_SPEED;
+    distance_mm = mesure_distance(C2_TRIGGER_PIN,C2_ECHO_PIN);
+    C2_personne_presente = is_personne_presente(distance_mm);
+    afficher_distance("C2", distance_mm);
+
+    C1_C2_actives = is_couple_present(C1_personne_presente, C2_personne_presente);
+  }
   
-    /* 4. Activer flag personne_presente si distance < 1000 mm */
-    if (distance_mm <= 1000) {
-      Serial.println(distance_mm / 10.0, 2);
-      C2_personne_presente = true;
-    } else {
-      C2_personne_presente = false;
-    }
+
+  /* --- Couple C3 et C4 --- */
+  if (C3_C4_actives == false) {
+    /* Capteur 3 */
+    distance_mm = mesure_distance(C3_TRIGGER_PIN,C3_ECHO_PIN);
+    C3_personne_presente = is_personne_presente(distance_mm);
+    afficher_distance("C3", distance_mm);
+  
+    /* Capteur 4 */
+    distance_mm = mesure_distance(C4_TRIGGER_PIN,C4_ECHO_PIN);
+    C4_personne_presente = is_personne_presente(distance_mm);
+    afficher_distance("C4", distance_mm);
+
+    C3_C4_actives = is_couple_present(C3_personne_presente, C4_personne_presente);
   }
 
-  /* 5. Activer flag couple si deux personnes sont detectees */
-  if (C1_personne_presente == true && C2_personne_presente == true){
-    C1_C2_actives = true;
-    Serial.println("Deux personnes ont active les capteurs");
+    /* --- Couple C3 et C4 --- */
+  if (C5_C6_actives == false) {
+    /* Capteur 5 */
+    distance_mm = mesure_distance(C5_TRIGGER_PIN,C5_ECHO_PIN);
+    C5_personne_presente = is_personne_presente(distance_mm);
+    afficher_distance("C5", distance_mm);
+  
+    /* Capteur 6 */
+    distance_mm = mesure_distance(C6_TRIGGER_PIN,C6_ECHO_PIN);
+    C6_personne_presente = is_personne_presente(distance_mm);
+    afficher_distance("C6", distance_mm);
+
+    C5_C6_actives = is_couple_present(C5_personne_presente, C6_personne_presente);
   }
    
-  /* Affiche les résultats en mm, cm et m */
-  /*Serial.print(F("Distance: "));
-  Serial.print(distance_mm);
-  Serial.print(F("mm ("));
-  Serial.print(distance_mm / 10.0, 2);
-  Serial.print(F("cm, "));
-  Serial.print(distance_mm / 1000.0, 2);
-  Serial.println(F("m)"));*/
-   
   /* Délai d'attente pour éviter d'afficher trop de résultats à la seconde */
-  delay(50);
+  delay(2000);
 }
+
+
+/* Mesure distance */
+float mesure_distance (const byte trigger_pin, const byte echo_pin) {
+  /* 1. Lance une mesure de distance en envoyant une impulsion HIGH de 10µs sur la broche TRIGGER */
+  digitalWrite(trigger_pin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigger_pin, LOW);
+  
+  /* 2. Mesure le temps entre l'envoi de l'impulsion ultrasonique et son écho (si il existe) */
+  long measure = pulseIn(echo_pin, HIGH, MEASURE_TIMEOUT);
+   
+  /* 3. Calcul la distance à partir du temps mesuré */
+  float distance_mm = measure / 2.0 * SOUND_SPEED;
+
+  return distance_mm;
+}
+
+bool is_couple_present(bool captA_personne_presente, bool captB_personne_presente) {
+  /* 5. Activer flag couple si deux personnes sont detectees */
+  if (captA_personne_presente == true && captB_personne_presente == true){
+    Serial.println("Deux personnes ont active un couple de capteurs");
+    return true;
+  } else {
+    return false;
+  }
+}
+
+bool is_personne_presente(float distance_mm) {
+  /* 4. Activer flag personne_presente si distance <= 900 mm */
+  if (distance_mm <= 900) {
+    Serial.println("Personne presente");
+    return true;
+  } else {
+    return false;
+  }
+}
+
+/* Affiche les résultats en mm, cm et m */
+void afficher_distance(String capt, float distance_mm) {
+    Serial.print(capt + " = ");
+    Serial.print(F("Distance: "));
+    Serial.print(distance_mm);
+    Serial.print(F("mm ("));
+    Serial.print(distance_mm / 10.0, 2);
+    Serial.print(F("cm, "));
+    Serial.print(distance_mm / 1000.0, 2);
+    Serial.println(F("m)"));
+}
+
