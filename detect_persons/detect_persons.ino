@@ -55,13 +55,14 @@ bool C5_C6_actives_10 = false;
 /* Flags passage boucle */
 bool C1_C2_first_pass = true;
 bool C3_C4_first_pass = true;
-bool C5_C6_first_pass = true; 
+bool C5_C6_first_pass = true;
 
 /* Variables globales */ 
 float distance_mm = 0;
 uint32_t C1_C2_start_millis = 0;
 uint32_t C3_C4_start_millis = 0;
 uint32_t C5_C6_start_millis = 0;
+uint32_t etape_30_start_millis = 0;
 
 /** --- Fonction setup() --- */
 void setup() {
@@ -130,6 +131,11 @@ void loop() {
     C1_C2_actives = is_couple_present(C1_personne_presente, C2_personne_presente);
     
     C1_C2_actives_10 = check_presence_10_sec(C1_C2_actives, &C1_C2_first_pass, current_millis, &C1_C2_start_millis, C1_C2_LED_PIN);
+
+    /* Si le couple vient d'etre active maj timer etape 30 secondes */
+    if (C1_C2_actives_10) {
+      etape_30_start_millis = current_millis;
+    }
   }
   
 
@@ -148,6 +154,11 @@ void loop() {
     C3_C4_actives = is_couple_present(C3_personne_presente, C4_personne_presente);
 
     C3_C4_actives_10 = check_presence_10_sec(C3_C4_actives, &C3_C4_first_pass, current_millis, &C3_C4_start_millis, C3_C4_LED_PIN);
+
+    /* Si le couple vient d'etre active maj timer etape 30 secondes */
+    if (C3_C4_actives_10) {
+      etape_30_start_millis = current_millis;
+    }
   }
 
     /* --- Couple C3 et C4 --- */
@@ -165,6 +176,18 @@ void loop() {
     C5_C6_actives = is_couple_present(C5_personne_presente, C6_personne_presente);
     
     C5_C6_actives_10 = check_presence_10_sec(C5_C6_actives, &C5_C6_first_pass, current_millis, &C5_C6_start_millis, C5_C6_LED_PIN);
+
+    /* Si le couple vient d'etre active maj timer etape 30 secondes */
+    if (C5_C6_actives_10) {
+      etape_30_start_millis = current_millis;
+    }
+  }
+
+  /* Verifier que la derniere activation etait il y a moins de 30 secondes, si non, tout remettre à zero */
+  if (C1_C2_actives_10 || C3_C4_actives_10 || C5_C6_actives_10) {
+    if ((current_millis - etape_30_start_millis) >= 30000) {
+      raz();
+    }
   }
 
   /* Si tous les capteurs sont actives alors desactiver electro aimant */
@@ -177,7 +200,6 @@ void loop() {
 
   delay(200);
 }
-
 
 /* Mesure distance */
 float mesure_distance (const byte trigger_pin, const byte echo_pin) {
@@ -215,11 +237,11 @@ bool is_personne_presente(float distance_mm) {
   }
 }
 
-/* Verifie si la personne reste au moins 10 secondes sous le capteur, retourne vrai ou faux */
+/* Verifie si la personne reste au moins 10 secondes sous le capteur, retourne vrai si plus de 10sec ou faux sinon */
 bool check_presence_10_sec(bool actives, bool * first_pass, uint32_t current_millis, uint32_t * start_millis, const byte led_pin) {
   bool presence_10_sec = false;
   if (actives) {
-    if(*first_pass == true) {                               /* Si c'est la personne vient detre detectee */
+    if(*first_pass == true) {                               /* Si la personne vient detre detectee */
       *start_millis = millis();                             /* On lance le decompte */
       *first_pass = false;
     } else if ((current_millis - *start_millis) >= 10000) { /* Si il sest ecoule plus de 10 secondes alors */
@@ -234,6 +256,19 @@ bool check_presence_10_sec(bool actives, bool * first_pass, uint32_t current_mil
   return presence_10_sec;
 }
 
+/* Verifie si la derniere etape d'activation du couple de capteur etait il y a plus de 30 secondes, retourne vrai si plus de 30sec ou faux sinon */
+bool check_etape_30_sec(bool actives_10, bool * first_pass, uint32_t current_millis, uint32_t * start_millis) {
+  bool etape_30_sec = false;
+  if (actives_10) {
+    if(*first_pass == true) {
+      *start_millis = millis();
+      *first_pass = false;
+    }
+  }
+  
+  return etape_30_sec;
+}
+
 /* Affiche les résultats en mm, cm et m */
 void afficher_distance(String capt, float distance_mm) {
     Serial.print(capt + " = ");
@@ -244,5 +279,36 @@ void afficher_distance(String capt, float distance_mm) {
     Serial.print(F("cm, "));
     Serial.print(distance_mm / 1000.0, 2);
     Serial.println(F("m)"));
+}
+
+/* Remise à zero des variables et des flags */
+void raz() {
+  C1_personne_presente = false;
+  C2_personne_presente = false;
+  C3_personne_presente = false;
+  C4_personne_presente = false;
+  C5_personne_presente = false;
+  C6_personne_presente = false;
+
+  C1_C2_actives = false;
+  C3_C4_actives = false;
+  C5_C6_actives = false;
+  C1_C2_actives_10 = false;
+  C3_C4_actives_10 = false;
+  C5_C6_actives_10 = false;
+
+  C1_C2_first_pass = true;
+  C3_C4_first_pass = true;
+  C5_C6_first_pass = true;
+
+  distance_mm = 0;
+  C1_C2_start_millis = 0;
+  C3_C4_start_millis = 0;
+  C5_C6_start_millis = 0;
+  etape_30_start_millis = 0;
+
+  digitalWrite(C1_C2_LED_PIN, LOW);
+  digitalWrite(C3_C4_LED_PIN, LOW);
+  digitalWrite(C5_C6_LED_PIN, LOW);
 }
 
