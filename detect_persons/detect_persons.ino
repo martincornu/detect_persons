@@ -48,16 +48,27 @@ bool C6_personne_presente = false;
 bool C1_C2_actives = false;
 bool C3_C4_actives = false;
 bool C5_C6_actives = false;
+bool C1_C2_actives_10 = false;
+bool C3_C4_actives_10 = false;
+bool C5_C6_actives_10 = false;
+
+/* Flags passage boucle */
+bool C1_C2_first_pass = true;
+bool C3_C4_first_pass = true;
+bool C5_C6_first_pass = true; 
 
 /* Variables globales */ 
 float distance_mm = 0;
+uint32_t C1_C2_start_millis = 0;
+uint32_t C3_C4_start_millis = 0;
+uint32_t C5_C6_start_millis = 0;
 
 /** --- Fonction setup() --- */
 void setup() {
    
   /* Initialise le port série */
-  //Serial.begin(9600);
-  //Serial.println("Initialisation...");
+  Serial.begin(9600);
+  Serial.println("Initialisation...");
    
   /* Initialise les broches */
   pinMode(AIMANT_PIN, OUTPUT);
@@ -100,75 +111,71 @@ void setup() {
 /** --- Fonction loop() --- */
 void loop() {
 
-  //Serial.println("Mesure distance...");
+  Serial.println("Mesure distance...");
+
+  uint32_t current_millis = millis();
    
   /* --- Couple C1 et C2 --- */
-  if (C1_C2_actives == false) {
+  if (C1_C2_actives_10 == false) {
     /* Capteur 1 */
     distance_mm = mesure_distance(C1_TRIGGER_PIN,C1_ECHO_PIN);
     C1_personne_presente = is_personne_presente(distance_mm);
-    //afficher_distance("C1", distance_mm);
+    afficher_distance("C1", distance_mm);
   
     /* Capteur 2 */
     distance_mm = mesure_distance(C2_TRIGGER_PIN,C2_ECHO_PIN);
     C2_personne_presente = is_personne_presente(distance_mm);
-    //afficher_distance("C2", distance_mm);
+    afficher_distance("C2", distance_mm);
 
     C1_C2_actives = is_couple_present(C1_personne_presente, C2_personne_presente);
-
-    if (C1_C2_actives) {
-      digitalWrite(C1_C2_LED_PIN, HIGH);
-    }
+    
+    C1_C2_actives_10 = check_presence_10_sec(C1_C2_actives, &C1_C2_first_pass, current_millis, &C1_C2_start_millis, C1_C2_LED_PIN);
   }
   
 
   /* --- Couple C3 et C4 --- */
-  if (C3_C4_actives == false) {
+  if (C3_C4_actives_10 == false) {
     /* Capteur 3 */
     distance_mm = mesure_distance(C3_TRIGGER_PIN,C3_ECHO_PIN);
     C3_personne_presente = is_personne_presente(distance_mm);
-    //afficher_distance("C3", distance_mm);
+    afficher_distance("C3", distance_mm);
   
     /* Capteur 4 */
     distance_mm = mesure_distance(C4_TRIGGER_PIN,C4_ECHO_PIN);
     C4_personne_presente = is_personne_presente(distance_mm);
-    //afficher_distance("C4", distance_mm);
+    afficher_distance("C4", distance_mm);
 
     C3_C4_actives = is_couple_present(C3_personne_presente, C4_personne_presente);
 
-    if (C3_C4_actives) {
-      digitalWrite(C3_C4_LED_PIN, HIGH);
-    }
+    C3_C4_actives_10 = check_presence_10_sec(C3_C4_actives, &C3_C4_first_pass, current_millis, &C3_C4_start_millis, C3_C4_LED_PIN);
   }
 
     /* --- Couple C3 et C4 --- */
-  if (C5_C6_actives == false) {
+  if (C5_C6_actives_10 == false) {
     /* Capteur 5 */
     distance_mm = mesure_distance(C5_TRIGGER_PIN,C5_ECHO_PIN);
     C5_personne_presente = is_personne_presente(distance_mm);
-    //afficher_distance("C5", distance_mm);
+    afficher_distance("C5", distance_mm);
   
     /* Capteur 6 */
     distance_mm = mesure_distance(C6_TRIGGER_PIN,C6_ECHO_PIN);
     C6_personne_presente = is_personne_presente(distance_mm);
-    //afficher_distance("C6", distance_mm);
+    afficher_distance("C6", distance_mm);
 
     C5_C6_actives = is_couple_present(C5_personne_presente, C6_personne_presente);
-
-    if (C5_C6_actives) {
-      digitalWrite(C5_C6_LED_PIN, HIGH);
-    }
+    
+    C5_C6_actives_10 = check_presence_10_sec(C5_C6_actives, &C5_C6_first_pass, current_millis, &C5_C6_start_millis, C5_C6_LED_PIN);
   }
 
   /* Si tous les capteurs sont actives alors desactiver electro aimant */
-  if (C1_C2_actives && C3_C4_actives && C5_C6_actives) {
-    //Serial.println("Electro aimant descative !");
+  if (C1_C2_actives_10 && C3_C4_actives && C5_C6_actives) {
+    Serial.println("Electro aimant descative !");
     digitalWrite(AIMANT_PIN, LOW);
     delay(5000);
     exit(0);
   }
 
-  delay(100);
+  delay(1000);
 }
 
 
@@ -191,7 +198,7 @@ float mesure_distance (const byte trigger_pin, const byte echo_pin) {
 bool is_couple_present(bool captA_personne_presente, bool captB_personne_presente) {
   /* 5. Activer flag couple si deux personnes sont detectees */
   if (captA_personne_presente == true && captB_personne_presente == true){
-    //Serial.println("Deux personnes ont active un couple de capteurs");
+    Serial.println("Deux personnes ont active un couple de capteurs");
     return true;
   } else {
     return false;
@@ -201,22 +208,41 @@ bool is_couple_present(bool captA_personne_presente, bool captB_personne_present
 bool is_personne_presente(float distance_mm) {
   /* 4. Activer flag personne_presente si distance <= à distance capteur sol - distance taille humain min */
   if (distance_mm <= (distance_capteur_sol_mm - taille_min_mm)) {
-    //Serial.println("Personne presente");
+    Serial.println("Personne presente");
     return true;
   } else {
     return false;
   }
 }
 
+/* Verifie si la personne reste au moins 10 secondes sous le capteur, retourne vrai ou faux */
+bool check_presence_10_sec(bool actives, bool * first_pass, uint32_t current_millis, uint32_t * start_millis, const byte led_pin) {
+  bool presence_10_sec = false;
+  if (actives) {
+    if(*first_pass == true) {                               /* Si c'est la personne vient detre detectee */
+      *start_millis = millis();                             /* On lance le decompte */
+      *first_pass = false;
+    } else if ((current_millis - *start_millis) >= 10000) { /* Si il sest ecoule plus de 10 secondes alors */
+      digitalWrite(led_pin, HIGH);
+      presence_10_sec = true;
+    }
+  } else {
+    *start_millis = 0;                                      /* Si la personne s'enleve de sous le capteur alors */
+    *first_pass = true;                                     /* Remettre à 0 le decompte */
+  }
+
+  return presence_10_sec;
+}
+
 /* Affiche les résultats en mm, cm et m */
 void afficher_distance(String capt, float distance_mm) {
-    /*Serial.print(capt + " = ");
+    Serial.print(capt + " = ");
     Serial.print(F("Distance: "));
     Serial.print(distance_mm);
     Serial.print(F("mm ("));
     Serial.print(distance_mm / 10.0, 2);
     Serial.print(F("cm, "));
     Serial.print(distance_mm / 1000.0, 2);
-    Serial.println(F("m)"));*/
+    Serial.println(F("m)"));
 }
 
