@@ -168,14 +168,14 @@ void loop() {
   }
 
   /* Si tous les capteurs sont actives alors desactiver electro aimant */
-  if (C1_C2_actives_10 && C3_C4_actives && C5_C6_actives) {
+  if (C1_C2_actives_10 && C3_C4_actives_10 && C5_C6_actives_10) {
     Serial.println("Electro aimant descative !");
     digitalWrite(AIMANT_PIN, LOW);
     delay(5000);
     exit(0);
   }
 
-  delay(1000);
+  delay(200);
 }
 
 
